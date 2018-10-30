@@ -1,0 +1,20 @@
+front_right:
+  coeff0: 0.007205613998716326
+  coeff1: -0.8178123209723399
+  port: A
+  threshold: 5
+front_left:
+  coeff0: 0.0009860081337509259
+  coeff1: -0.2823111031334091
+  port: B
+  threshold: 5
+back_left:
+  coeff0: 0.006383991968264457
+  coeff1: -1.2385725699658667
+  port: C
+  threshold: 5
+back_right:
+  coeff0: 0.006699106612650196
+  coeff1: -0.9382720599996138
+  port: D
+  threshold: 5

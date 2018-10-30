@@ -1,0 +1,24 @@
+<launch>
+    <arg name="model" default="$(find drone_legs_ros)/urdf/quad_legs/quad_legs.urdf"/>
+    <arg name="x_pos"   default="0"/>
+    <arg name="y_pos"   default="0"/>
+    <arg name="z_pos"   default= "0.5"/>
+    
+    <param name="robot_description" command="$(find xacro)/xacro '$(arg model)'" />
+
+    <group ns="drone_legs_ros">
+        <node name="spawn_legs" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+            args="-urdf -model drone_legs -param /robot_description -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos)" />
+    </group>
+    
+    
+
+    <!--<node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />-->
+    <!--<node name="initialize_leg_positions" pkg="thk_drone_legs" type="rviz_initialize_leg_positions.py"/>-->
+    
+    <!-- load the controllers -->
+    <!--
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" ns="/drone_legs" args="joint_state_controller"/>
+    -->
+</launch>

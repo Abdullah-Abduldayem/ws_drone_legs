@@ -1,0 +1,8 @@
+# Thrust is represented as fraction of the total weight.
+# =1 -> hover
+# <1 -> descend
+# >1 -> ascend
+float64 thrust
+---
+bool success                # return true if setting state successful
+string status_message       # comments if available

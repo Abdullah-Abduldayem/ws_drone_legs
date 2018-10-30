@@ -1,0 +1,3 @@
+- git:
+    local-name: pyssc32
+    uri: https://github.com/Abdullah-Abduldayem/pyssc32.git

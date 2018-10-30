@@ -1,0 +1,18 @@
+<launch>
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="verbose" default="True"/>
+        <arg name="world_name" value="$(find drone_legs_ros)/worlds/single_step.world"/>
+        <arg name="gui" default="true"/>
+        
+        <!--
+        <arg name="paused" default="$(arg paused)"/>
+        <arg name="debug" default="$(arg debug)"/>
+        <arg name="headless" default="$(arg headless)"/>
+        -->
+    </include>
+    
+    <arg name="rvizconfig" default="$(find drone_legs_ros)/rviz/quad_legs.rviz" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+    
+    <!--<include file="$(find drone_legs_ros)/launch/spawn_legs.launch"/>-->
+</launch>

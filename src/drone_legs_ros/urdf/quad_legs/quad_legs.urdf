@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<robot name="quad_legs" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find drone_legs_ros)/urdf/quad_legs/single_leg.xacro"/>
+  
+  <property name="PI" value="3.1415926535897931" />
+  <property name="dist_btw_legs" value="0.108"/>
+  <property name="leg_offset" value="${dist_btw_legs/1.414213562}" />
+
+  <property name="mass_top_plate" value="1"/>
+
+
+  <xacro:create_box
+    link_name="base_link"
+    mass="0.5"
+    size_x="${dist_btw_legs+0.1}"
+    size_y="${dist_btw_legs+0.1}"
+    size_z="0.005"
+    material="support"
+    collision_name="base_link_collision"
+    >
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:create_box>
+
+  <xacro:single_leg parent_link="base_link" leg_name="front_right">
+      <origin xyz="${leg_offset} ${leg_offset} 0" rpy="0 -${PI/2} ${PI/4}"/>
+  </xacro:single_leg>
+
+  <xacro:single_leg parent_link="base_link" leg_name="front_left">
+      <origin xyz="-${leg_offset} ${leg_offset} 0" rpy="0 -${PI/2} ${3*PI/4}"/>
+  </xacro:single_leg>
+
+  <xacro:single_leg parent_link="base_link" leg_name="back_right">
+      <origin xyz="${leg_offset} -${leg_offset} 0" rpy="0 -${PI/2} -${PI/4}"/>
+  </xacro:single_leg>
+
+  <xacro:single_leg parent_link="base_link" leg_name="back_left">
+      <origin xyz="-${leg_offset} -${leg_offset} 0" rpy="0 -${PI/2} -${3*PI/4}"/>
+  </xacro:single_leg>
+
+  <gazebo>
+        <plugin name="drone_legs_control_plugin" filename="libgazebo_drone_legs_control_plugin.so">
+            <robotNamespace>drone_legs</robotNamespace>
+            <pressure_sensor_publish_rate>20.0</pressure_sensor_publish_rate>
+            <state_publish_rate>20.0</state_publish_rate>
+            <pid_position_base_hip>1 0 0.007</pid_position_base_hip>
+            <pid_position_thigh_lift>2 0 0.013</pid_position_thigh_lift>
+            <pid_position_knee_lift>2 0 0.013</pid_position_knee_lift>
+            <initial_thrust>1.0</initial_thrust>
+        </plugin>
+    </gazebo>
+</robot>
