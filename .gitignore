@@ -4,7 +4,10 @@ devel
 logs
 
 .catkin_tools/profiles
+.catkin_tools/VERSION
+.idea/
 
+*.pyc
 *.bak
 *.swp
 .directory
@@ -15,5 +18,4 @@ logs
 .ycm_extra_conf.py*
 
 src/.settings
-
-rc/pyssc32
+src/pyssc32

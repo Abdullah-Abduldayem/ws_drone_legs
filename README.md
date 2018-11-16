@@ -46,30 +46,16 @@ cd ~/ws_drone_legs
 catkin build
 ```
 
+### Install pyssc32
+```
+cd ~/ws_drone_legs/src/pyssc32
+sudo python setup.py install
+```
+
 
 ## 2. Operation
 
-### Configure ROS MASTER
-The following must be run on each terminal to communicate properly with the jackal. To avoid doing this every time, you can include these in you `~/.bashrc` file.
+### Run leg controller (Real-world)
 ```
-export ROS_MASTER_URI=http://cpr-jackal:11311
-export ROS_IP=<your computer's IP address>
-```
-
-### Start the webcam and lidar
-```
-roslaunch mbz_c3_jackal gscam.launch
-rosrun hokuyo_node hokuyo_node
-```
-
-### Run the ball detection
-```
-rosrun mbz_c3_jackal ball_detection.py 
-```
-
-### Getting the Jackal to work with keyboard teleop
-After installing the `teleop_twist_keyboard` package, fire up the node and control Jackal using the keyboard
-
-```
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py
+rosrun drone_legs_ros leg_state_publisher.py
 ```

@@ -12,71 +12,71 @@ servos:
   pwm_center: 1532
   pwm_per_degree: 6.033333333333333
 - _name: front_left_thigh_lift
-  _number: 1
-  degrees_max: 80.0
+  _number: 28
+  degrees_max: 90.0
   degrees_min: -10.0
-  pwm_center: 1355
+  pwm_center: 1512
   pwm_per_degree: 10.222222222222221
 - _name: front_left_knee_lift
-  _number: 2
+  _number: 29
   degrees_max: 150.0
   degrees_min: 10.0
   pwm_center: 2304
   pwm_per_degree: -9.755555555555556
   
 - _name: front_right_base_hip
-  _number: 16
+  _number: 1
   degrees_max: 45.0
   degrees_min: -45.0
   pwm_center: 1458
   pwm_per_degree: 5.966666666666667
 - _name: front_right_thigh_lift
-  _number: 17
-  degrees_max: 80.0
+  _number: 12
+  degrees_max: 90.0
   degrees_min: -10.0
   pwm_center: 1475
   pwm_per_degree: 6.555555555555555
 - _name: front_right_knee_lift
-  _number: 18
+  _number: 13
   degrees_max: 150.0
   degrees_min: 10.0
   pwm_center: 2205
   pwm_per_degree: -6.522222222222
   
 - _name: back_left_base_hip
-  _number: 8
+  _number: 2
   degrees_max: 45.0
   degrees_min: -45.0
   pwm_center: 1539
   pwm_per_degree: 6.1555555555
 - _name: back_left_thigh_lift
-  _number: 9
-  degrees_max: 80.0
+  _number: 20
+  degrees_max: 90.0
   degrees_min: -10.0
-  pwm_center: 1685
-  pwm_per_degree: 6.64444444444
+  pwm_center: 1540
+  pwm_per_degree: 6.555555555555555
 - _name: back_left_knee_lift
-  _number: 10
+  _number: 21
   degrees_max: 150.0
   degrees_min: 10.0
   pwm_center: 2141
   pwm_per_degree: -6.788888
   
 - _name: back_right_base_hip
-  _number: 24
+  _number: 3
   degrees_max: 45.0
   degrees_min: -45.0
   pwm_center: 1513
   pwm_per_degree: 6.00000000
 - _name: back_right_thigh_lift
-  _number: 25
-  degrees_max: 80.0
+  _number: 6
+  degrees_max: 90.0
   degrees_min: -10.0
-  pwm_center: 1699
+  pwm_center: 1531
   pwm_per_degree: 10.33333333333333
 - _name: back_right_knee_lift
-  _number: 26
+  _number: 7
   degrees_max: 150.0
   degrees_min: 10.0
-  pwm_center: 2405
-  pwm_per_degree: -8.9444444444
+  pwm_center: 2584
+  pwm_per_degree: -10.933333333

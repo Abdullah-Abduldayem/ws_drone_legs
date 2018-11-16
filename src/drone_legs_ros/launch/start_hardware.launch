@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find mavros)/launch/px4.launch">
+    </include>
+
+    <node name="leg_state_publisher" pkg="drone_legs_ros" type="leg_state_publisher.py" required="true" />
+</launch>
