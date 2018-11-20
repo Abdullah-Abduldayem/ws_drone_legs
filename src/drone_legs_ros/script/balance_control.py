@@ -51,8 +51,8 @@ class BalanceController(QuadrupedController):
         self.legs["back_right"].angle_knee_lift_target = a12
         """
         
-        a11 = 0
-        a12 = pi/2
+        a11 = pi/4
+        a12 = pi/4
         a21 = pi/4
         a22 = pi/4
         
@@ -72,7 +72,7 @@ class BalanceController(QuadrupedController):
         
         ## Land
         self.thrust = 0
-        self.updateThrust()
+        #self.updateThrust()
         
         ## Small delay before starting
         rospy.sleep(2.0)
@@ -90,9 +90,9 @@ class BalanceController(QuadrupedController):
         
         wave = sgn*sin(2*pi*t_elapsed)*0.5
         
-        x_dot = 0 # wave
+        x_dot = wave
         y_dot = x_dot #wave
-        z_dot = 0.2*wave
+        z_dot = 0# 0.2*wave
         r_dot = 0 #0.2*sgn*cos(2*pi*t_elapsed)
         p_dot = 0 #r_dot
         d1_dot = 0

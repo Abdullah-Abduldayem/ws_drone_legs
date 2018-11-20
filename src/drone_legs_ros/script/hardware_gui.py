@@ -2,55 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import wx
-from math import radians, degrees
+from math import radians, degrees, pi
 
-import time
 import rospy
 import rospkg
 import os
 import tf
 from sensor_msgs.msg import Imu
 from drone_legs_ros.quadruped_controller import QuadrupedController
+from collections import deque
 
+import time
 
-
-class DataEntry():
-    joints_target  = []
-    joints_current = []
-    quat_current = []
-    angular_vel_current = []
-    linear_acc_current = []
-
-    def __init__(self, csv_line = None):
-        if (csv_line is not None):
-            csv_elements = csv_line.split(",")
-            if len(csv_elements) != 26:
-                raise Exception("Expecting {} elements in CSV line. Got {}. String: '{}'".format(26, len(csv_elements), csv_line))
-
-            arr = [float(x) for x in csv_elements]
-            self.joints_target = arr[0:8]
-            self.joints_current = arr[8:16]
-            self.quat_current = arr[16:20]
-            self.angular_vel_current = arr[20:23]
-            self.linear_acc_current = arr[23:26]
-
-
-    def GetNetworkOutput(self):
-        return self.joints_target
-
-    def GetNetworkInput(self):
-        return self.joints_current + self.quat_current + self.angular_vel_current + self.linear_acc_current
-
-    def __str__(self):
-        out_arr = self.GetNetworkOutput() + self.GetNetworkInput()
-
-        out = ', '.join(str(x) for x in out_arr)
-        return out
-
-
-class DataCollectorForm(wx.Frame):
+class HardwareControlForm(wx.Frame):
     def __init__(self, *args, **kw):
-        super(DataCollectorForm, self).__init__(*args, **kw)
+        super(HardwareControlForm, self).__init__(*args, **kw)
 
         # get an instance of RosPack with the default search paths
         rospack = rospkg.RosPack()
@@ -77,6 +43,8 @@ class DataCollectorForm(wx.Frame):
 
         self.servo_controller = FullQuadrupedController()
         self.servo_controller.initController()
+        self.servo_controller.initAngles()
+
 
         self.entries = []
         self.joints_target = None
@@ -84,11 +52,11 @@ class DataCollectorForm(wx.Frame):
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnTick, self.timer)
-        self.timer.Start(100)
+        self.timer.Start(20) #50Hz
+
+        self.executing_control = False
 
         self.InitUI()
-
-        self.OnLoad(None)
 
     def InitUI(self):
 
@@ -158,39 +126,42 @@ class DataCollectorForm(wx.Frame):
             self.sensor_txt[leg_name].SetPosition((x,y))
             self.sensor_txt[leg_name].SetSize((40, 40))
 
-        self.SetTitle('Data Collector for landed RL')
+        self.SetTitle('Leg Control GUI')
         self.Centre()
 
         ##########
         # Create buttons
         ##########
         button_size = (140, 40)
-        btnSetTarget = wx.Button(pnl, label='Set Target Pose', pos=(220, 20), size=button_size)
-        btnSetTarget.Bind(wx.EVT_BUTTON, self.OnSetTarget)
-
-        btnGetSample = wx.Button(pnl, label='Get Sample Pose', pos=(220, 60), size=button_size)
-        btnGetSample.Bind(wx.EVT_BUTTON, self.OnGetSample)
+        btnExecuteControl1 = wx.Button(pnl, label='Start Control 1', pos=(220, 20), size=button_size)
+        btnExecuteControl1.Bind(wx.EVT_BUTTON, self.OnControll1)
 
         btnResetPose = wx.Button(pnl, label='Reset Pose', pos=(220, 100), size=button_size)
         btnResetPose.Bind(wx.EVT_BUTTON, self.OnResetPose)
 
-        self.txt_num_samples = wx.StaticText(pnl, label=str("Total Samples: 0"), pos=(220, 140))
-
-        btnLoad = wx.Button(pnl, label='Load Data', pos=(220, 180), size=button_size)
-        btnLoad.Bind(wx.EVT_BUTTON, self.OnLoad)
-
-        btnSave = wx.Button(pnl, label='Save Data', pos=(220, 220), size=button_size)
-        btnSave.Bind(wx.EVT_BUTTON, self.OnSave)
-
         self.txt_roll  = wx.StaticText(pnl, label=str("   Roll: 0"), pos=(80, 220))
         self.txt_pitch = wx.StaticText(pnl, label=str("Pitch: 0"), pos=(80, 240))
+        self.txt_error = wx.StaticText(pnl, label=str("Error: None"), pos=(0, 260))
 
     def OnTick(self, e):
         for leg_name in self.leg_names:
             self.sensor_txt[leg_name].SetLabel("{:04d}".format(int(self.servo_controller.legs[leg_name].sensor)))
 
-        self.txt_roll.SetLabel("   Roll: {:2.1f}".format(degrees(self.servo_controller.rpy[0])))
-        self.txt_pitch.SetLabel("Pitch: {:2.1f}".format(degrees(self.servo_controller.rpy[1])))
+        error = ""
+
+        if (self.servo_controller.rpy is None):
+            error += "No roll or pitch data received"
+        else:
+            roll = self.servo_controller.rpy[0]
+            pitch = self.servo_controller.rpy[1]
+
+            self.txt_roll.SetLabel("   Roll: {:2.3f}".format(degrees(roll)))
+            self.txt_pitch.SetLabel("Pitch: {:2.3f}".format(degrees(pitch)))
+
+        if (self.executing_control):
+            self.servo_controller.OnTick()
+
+        self.txt_error.SetLabel("Error: " + error)
 
     def OnSliderScroll(self, e):
         obj = e.GetEventObject()
@@ -210,29 +181,6 @@ class DataCollectorForm(wx.Frame):
 
         self.servo_controller.updateAngles()
 
-    def OnSetTarget(self, e):
-        if (self.entry is None):
-            wx.MessageBox('Get sample pose first', 'Warning', wx.OK | wx.ICON_WARNING)
-            return
-
-        self.entry.joints_target = self.GetCurrentJointAngles()
-
-        self.entries.append(self.entry)
-        self.UpdateTotalSamples()
-
-    def OnGetSample(self, e):
-        #if (self.joints_target is None):
-        #    wx.MessageBox('Set target pose first', 'Warning', wx.OK | wx.ICON_WARNING)
-        #    return
-
-        entry = DataEntry()
-
-        entry.joints_current = self.GetCurrentJointAngles()
-        entry.quat_current = self.servo_controller.quat
-        entry.angular_vel_current = self.servo_controller.angular_vel
-        entry.linear_acc_current = self.servo_controller.linear_acc
-        self.entry = entry
-
     def OnResetPose(self, e):
         for joint_name in self.joint_names:
             val = 45
@@ -248,32 +196,17 @@ class DataCollectorForm(wx.Frame):
 
         self.servo_controller.updateAngles()
 
-    def OnLoad(self, e):
-        self.entries = []
+    def OnControll1(self, e):
+        self.executing_control = not self.executing_control
 
-        with open(self.csv_dir, "r") as csv:
-            header = csv.readline()
+        obj = e.GetEventObject()
+        if (self.executing_control):
+            obj.SetLabel("Stop Control 1")
+        else:
+            obj.SetLabel("Start Control 1")
+            self.servo_controller.state = FullQuadrupedController.STATE_EXPLORE
 
-            for line in csv:
-                entry = DataEntry(line)
-                self.entries.append(entry)
 
-        self.UpdateTotalSamples()
-
-    def OnSave(self, e):
-        with open(self.csv_dir, "w") as csv:
-            header = "target_1, target_2, target_3, target_4, target_5, target_6, target_7, target_8, "
-            header += "current_1, current_2, current_3, current_4, current_5, current_6, current_7, current_8, "
-            header += "quat_x, quat_y, quat_z, quat_w, "
-            header += "ang_vel_x, ang_vel_y, ang_vel_z, "
-            header += "lin_acc_x, lin_acc_y, lin_acc_z"
-            csv.write(header + "\n")
-
-            for entry in self.entries:
-                csv.write(str(entry) + "\n")
-
-    def UpdateTotalSamples(self):
-        self.txt_num_samples.SetLabel("Total Samples: {}".format(len(self.entries)))
 
     def GetCurrentJointAngles(self):
         angles = []
@@ -306,9 +239,57 @@ class FullQuadrupedController(QuadrupedController):
     imu_data = None
     rpy = None
 
+    STATE_EXPLORE = 0
+    STATE_BALANCE = 1
+
+
     def __init__(self):
         rospy.Subscriber("/mavros/imu/data", Imu, self.callbackImu)
         print("Initilized controller")
+
+        self.gradients = dict()
+        ## First one is the change of [roll, pitch] when changing the hip in the negative direction, second is the positive direction
+        #self.gradient["front_left"] = [[0,0], [0,0]]
+        #self.gradient["front_right"] = [[0, 0], [0, 0]]
+        #self.gradient["back_right"] = [[0, 0], [0, 0]]
+        #self.gradient["back_left"] = [[0, 0], [0, 0]]
+
+        ## First one is [delta_roll, delta_pitch] when changing the hip in the negative direction, second is the positive direction
+        self.gradients["front_left"] = [[0, 0], [0, 0]]
+        self.gradients["front_right"] = [[0, 0], [0, 0]]
+        self.gradients["back_right"] = [[0, 0], [0, 0]]
+        self.gradients["back_left"] = [[0, 0], [0, 0]]
+
+        self.changed_pose = dict()
+        ## First one is [roll, pitch] when changing the hip in the negative direction, second is the positive direction
+        self.changed_pose["front_left"] = [[0, 0], [0, 0]]
+        self.changed_pose["front_right"] = [[0, 0], [0, 0]]
+        self.changed_pose["back_right"] = [[0, 0], [0, 0]]
+        self.changed_pose["back_left"] = [[0, 0], [0, 0]]
+
+        self.state = self.STATE_EXPLORE
+        self.leg_num = 0
+        self.dir = 0
+        self.roll_ori = 0
+        self.pitch_ori = 0
+
+        self.leg_names = [
+            "front_right",
+            "front_left",
+            "back_left",
+            "back_right"
+        ]
+
+        self.modified_roll = 0
+        self.modified_pitch = 0
+
+        self.rad_inc = radians(2)
+
+    def initAngles(self):
+        for key in self.legs:
+            leg = self.legs[key]
+            leg.angle_thigh_lift_target = radians(45)
+            leg.angle_knee_lift_target = radians(45)
 
     def callbackImu(self, msg):
         ########
@@ -322,12 +303,97 @@ class FullQuadrupedController(QuadrupedController):
         self.angular_vel = [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]
         self.linear_acc = [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]
 
+        ## To simplify the problem, let's look at the angle that two opposing legs contribute to
+        ## To do this, we rotate the quat by 45 degrees since the legs are in an X-configuration
+        q_rot = tf.transformations.quaternion_from_euler(0, 0, -pi / 4)
+        q_new = tf.transformations.quaternion_multiply(self.quat, q_rot)
+        rpy_new = tf.transformations.euler_from_quaternion(q_new)
+        self.modified_roll = degrees(rpy_new[0])
+        self.modified_pitch = degrees(rpy_new[1])
+
+    def OnTick(self):
+        if self.state == self.STATE_EXPLORE:
+            print("{:2.3f} {:2.3f}".format(self.modified_roll, self.modified_pitch))
+
+            self.leg_num = 0
+            self.dir == 0
+
+            self.roll_ori = self.modified_roll
+            self.pitch_ori = self.modified_pitch
+            self.pose_ori = [self.modified_roll, self.modified_pitch]
+            dist_ori = self.pose_ori[0]**2 + self.pose_ori[1]**2
+
+
+            while True:
+                leg_name = self.leg_names[self.leg_num]
+                leg = self.legs[leg_name]
+
+                if self.dir == 0:
+                    leg.angle_thigh_lift_target -= self.rad_inc
+                    leg.angle_knee_lift_target += self.rad_inc
+                else:
+                    leg.angle_thigh_lift_target += self.rad_inc
+                    leg.angle_knee_lift_target -= self.rad_inc
+
+                self.updateAngles()
+
+                ## Sleep to get the IMU data
+                time.sleep(0.2) ## 20Hz
+
+                self.changed_pose[leg_name][self.dir] = [self.modified_roll, self.modified_pitch]
+
+                dis
+
+                gradient = [(self.roll_ori-self.modified_roll), (self.pitch_ori-self.modified_pitch)]
+                self.gradients[leg_name][self.dir] = gradient
+                #print("{:2.3f} {:2.3f}".format(self.modified_roll, self.modified_pitch))
+
+                ## Return to normal
+                if self.dir == 0:
+                    leg.angle_thigh_lift_target += self.rad_inc
+                    leg.angle_knee_lift_target -= self.rad_inc
+                else:
+                    leg.angle_thigh_lift_target -= self.rad_inc
+                    leg.angle_knee_lift_target += self.rad_inc
+
+                ## Increment our counters
+                self.dir = 1-self.dir
+                if self.dir == 0:
+                    self.leg_num += 1
+
+                    if self.leg_num >= 4:
+                        #self.state = self.STATE_BALANCE
+                        break
+
+
+            gradient_threshold = 0.2
+            for leg_name in self.changed_pose:
+                dist0 = self.changed_pose[leg_name][0][0]**2 + self.changed_pose[leg_name][0][1]**2
+                dist1 = self.changed_pose[leg_name][1][0]**2 + self.changed_pose[leg_name][0][1]**2
+
+                inc = 0
+
+                if (dist0 <= dist1 and dist0 < dist_ori):
+                    inc = -self.rad_inc
+                elif (dist0 > dist1 and dist1 < dist_ori):
+                    inc = self.rad_inc
+
+                if inc != 0:
+                    self.legs[leg_name].angle_thigh_lift_target += inc
+                    self.legs[leg_name].angle_knee_lift_target -= inc
+                    print("Changing {} to {}".format(leg_name, degrees(self.legs[leg_name].angle_thigh_lift_target)))
+
+            self.updateAngles()
+
+            print("Hey")
+
+        print(self.changed_pose)
 
 
 if __name__ == '__main__':
     rospy.init_node('rl_data_collector')
 
     app = wx.App()
-    ex = DataCollectorForm(None)
+    ex = HardwareControlForm(None)
     ex.Show()
     app.MainLoop()
