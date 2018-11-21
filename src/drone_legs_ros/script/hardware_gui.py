@@ -76,14 +76,14 @@ class HardwareControlForm(wx.Frame):
         slider_pos["back_left_knee_lift"] = (50, 120)
 
         slider_range = dict()
-        slider_range["front_right_thigh_lift"] = (0, 90, 45)
-        slider_range["front_right_knee_lift"] = (0, 180, 45)
-        slider_range["front_left_thigh_lift"] = (0, 90, 45)
-        slider_range["front_left_knee_lift"] = (0, 180, 45)
-        slider_range["back_right_thigh_lift"] = (0, 90, 45)
-        slider_range["back_right_knee_lift"] = (0, 180, 45)
-        slider_range["back_left_thigh_lift"] = (0, 90, 45)
-        slider_range["back_left_knee_lift"] = (0, 180, 45)
+        slider_range["front_right_thigh_lift"] = (-20, 100, 45)
+        slider_range["front_right_knee_lift"] = (-20, 180, 45)
+        slider_range["front_left_thigh_lift"] = (-20, 100, 45)
+        slider_range["front_left_knee_lift"] = (-20, 180, 45)
+        slider_range["back_right_thigh_lift"] = (-20, 100, 45)
+        slider_range["back_right_knee_lift"] = (-20, 180, 45)
+        slider_range["back_left_thigh_lift"] = (-20, 100, 45)
+        slider_range["back_left_knee_lift"] = (-20, 180, 45)
 
         slider_size = (30, 80)
 
@@ -204,7 +204,6 @@ class HardwareControlForm(wx.Frame):
             obj.SetLabel("Stop Control 1")
         else:
             obj.SetLabel("Start Control 1")
-            self.servo_controller.state = FullQuadrupedController.STATE_EXPLORE
 
 
 
@@ -239,40 +238,21 @@ class FullQuadrupedController(QuadrupedController):
     imu_data = None
     rpy = None
 
-    STATE_EXPLORE = 0
-    STATE_BALANCE = 1
-
 
     def __init__(self):
         rospy.Subscriber("/mavros/imu/data", Imu, self.callbackImu)
         print("Initilized controller")
 
-        self.gradients = dict()
-        ## First one is the change of [roll, pitch] when changing the hip in the negative direction, second is the positive direction
-        #self.gradient["front_left"] = [[0,0], [0,0]]
-        #self.gradient["front_right"] = [[0, 0], [0, 0]]
-        #self.gradient["back_right"] = [[0, 0], [0, 0]]
-        #self.gradient["back_left"] = [[0, 0], [0, 0]]
+        ## -1 moves in negative (downward) direction, 1 moves in positive (upward) direction
+        self.prev_dir = dict()
+        self.prev_dir["front_left"] = 0
+        self.prev_dir["front_right"] = 0
+        self.prev_dir["back_right"] = 0
+        self.prev_dir["back_left"] = 0
 
-        ## First one is [delta_roll, delta_pitch] when changing the hip in the negative direction, second is the positive direction
-        self.gradients["front_left"] = [[0, 0], [0, 0]]
-        self.gradients["front_right"] = [[0, 0], [0, 0]]
-        self.gradients["back_right"] = [[0, 0], [0, 0]]
-        self.gradients["back_left"] = [[0, 0], [0, 0]]
+        self.pose_ori = [0, 0]
 
-        self.changed_pose = dict()
-        ## First one is [roll, pitch] when changing the hip in the negative direction, second is the positive direction
-        self.changed_pose["front_left"] = [[0, 0], [0, 0]]
-        self.changed_pose["front_right"] = [[0, 0], [0, 0]]
-        self.changed_pose["back_right"] = [[0, 0], [0, 0]]
-        self.changed_pose["back_left"] = [[0, 0], [0, 0]]
-
-        self.state = self.STATE_EXPLORE
         self.leg_num = 0
-        self.dir = 0
-        self.roll_ori = 0
-        self.pitch_ori = 0
-
         self.leg_names = [
             "front_right",
             "front_left",
@@ -280,10 +260,12 @@ class FullQuadrupedController(QuadrupedController):
             "back_right"
         ]
 
+        ## The "roll" and "pitch" if we rotate IMU data so it aligns with the legs
         self.modified_roll = 0
         self.modified_pitch = 0
 
         self.rad_inc = radians(2)
+        self.processing_tick = False
 
     def initAngles(self):
         for key in self.legs:
@@ -312,82 +294,113 @@ class FullQuadrupedController(QuadrupedController):
         self.modified_pitch = degrees(rpy_new[1])
 
     def OnTick(self):
-        if self.state == self.STATE_EXPLORE:
-            print("{:2.3f} {:2.3f}".format(self.modified_roll, self.modified_pitch))
+        if (self.processing_tick):
+            return
 
-            self.leg_num = 0
-            self.dir == 0
+        self.processing_tick = True
+        print("{:2.3f}, {:2.3f}".format(self.modified_roll, self.modified_pitch))
 
-            self.roll_ori = self.modified_roll
-            self.pitch_ori = self.modified_pitch
-            self.pose_ori = [self.modified_roll, self.modified_pitch]
-            dist_ori = self.pose_ori[0]**2 + self.pose_ori[1]**2
+        self.leg_num = 0
+        self.pose_ori = [self.modified_roll, self.modified_pitch]
+        dist_ori = self.pose_ori[0]**2 + self.pose_ori[1]**2
 
 
-            while True:
-                leg_name = self.leg_names[self.leg_num]
-                leg = self.legs[leg_name]
+        for self.leg_num in range(4):
+            leg_name = self.leg_names[self.leg_num]
+            leg = self.legs[leg_name]
+            leg_name_opp = self.leg_names[(self.leg_num+2)%4]
+            leg_opp = self.legs[leg_name_opp]
 
-                if self.dir == 0:
-                    leg.angle_thigh_lift_target -= self.rad_inc
-                    leg.angle_knee_lift_target += self.rad_inc
+            tilt_threshold = 2.5
+            imbalance = 4
+            if (leg_name == "front_left" or leg_name == "back_right") and abs(self.modified_roll) < tilt_threshold:
+                ## We've reached our threshold, skip ahead
+                pass
+
+            elif (leg_name == "back_left" or leg_name == "front_right") and abs(self.modified_pitch) < tilt_threshold:
+                ## We've reached our threshold, skip ahead
+                pass
+
+            elif (abs(self.modified_roll) - imbalance > abs(self.modified_pitch)) and (leg_name == "back_left" or leg_name == "front_right"):
+                ## We have a big imbalance in roll, skip the pitch for now
+                pass
+
+            elif (abs(self.modified_pitch) - imbalance > abs(self.modified_roll)) and (leg_name == "front_left" or leg_name == "back_right"):
+                ## We have a big imbalance in pitch, skip the roll for now
+                pass
+
+            else:
+                start_dir = self.prev_dir[leg_name]
+                if (start_dir == 0):
+                    start_dir = -1
+
+                if start_dir+self.prev_dir[leg_name_opp] == 0:
+                    move_opp_leg = True
                 else:
-                    leg.angle_thigh_lift_target += self.rad_inc
-                    leg.angle_knee_lift_target -= self.rad_inc
+                    move_opp_leg = False
 
-                self.updateAngles()
+                ## Let's execute motion in the direction of the last step since the seemed to work
+                ## Otherwise we'll try the opposite direction
+                updated_dir = False
+                for dir in [start_dir, -start_dir]:
+                    leg.angle_thigh_lift_target += self.rad_inc*dir
 
-                ## Sleep to get the IMU data
-                time.sleep(0.2) ## 20Hz
+                    if (leg.angle_thigh_lift_target > radians(80)):
+                        ## Lower all legs. This guy is stretching too hard
+                        for temp_leg_name in self.legs:
+                            temp_leg = self.legs[temp_leg_name]
 
-                self.changed_pose[leg_name][self.dir] = [self.modified_roll, self.modified_pitch]
+                            ## If the opposing leg is relatively unbent, don't touch it
+                            if temp_leg_name == leg_name_opp and temp_leg.angle_thigh_lift_target < radians(70):
+                                continue
 
-                dis
+                            temp_leg.angle_thigh_lift_target -= self.rad_inc*dir
+                            temp_leg.angle_knee_lift_target += self.rad_inc*dir
 
-                gradient = [(self.roll_ori-self.modified_roll), (self.pitch_ori-self.modified_pitch)]
-                self.gradients[leg_name][self.dir] = gradient
-                #print("{:2.3f} {:2.3f}".format(self.modified_roll, self.modified_pitch))
+                    elif (leg.angle_thigh_lift_target < radians(5)):
+                        ## This leg is just too high. Stop raising it.
+                        leg.angle_thigh_lift_target = radians(5)
 
-                ## Return to normal
-                if self.dir == 0:
-                    leg.angle_thigh_lift_target += self.rad_inc
-                    leg.angle_knee_lift_target -= self.rad_inc
-                else:
-                    leg.angle_thigh_lift_target -= self.rad_inc
-                    leg.angle_knee_lift_target += self.rad_inc
+                    leg.angle_knee_lift_target = pi/2 - leg.angle_thigh_lift_target
 
-                ## Increment our counters
-                self.dir = 1-self.dir
-                if self.dir == 0:
-                    self.leg_num += 1
+                    if (move_opp_leg):
+                        leg_opp.angle_thigh_lift_target -= self.rad_inc*dir
+                        leg_opp.angle_knee_lift_target = pi/2 - leg_opp.angle_thigh_lift_target
 
-                    if self.leg_num >= 4:
-                        #self.state = self.STATE_BALANCE
+                    self.updateAngles()
+
+                    ## Sleep to get the IMU data
+                    time.sleep(0.2) ## 20Hz
+
+                    ## If this is a good step, keep it
+                    ## Otherwise, revert
+                    dist = self.modified_roll**2 + self.modified_pitch**2
+                    if (dist < dist_ori):
+                        dist_ori = dist
+                        self.prev_dir[leg_name] = dir
+                        updated_dir = True
                         break
 
+                    else:
+                        ## Bad move. Let's go back to the original pose
+                        leg.angle_thigh_lift_target -= self.rad_inc * dir
+                        leg.angle_knee_lift_target = pi/2 - leg.angle_thigh_lift_target
 
-            gradient_threshold = 0.2
-            for leg_name in self.changed_pose:
-                dist0 = self.changed_pose[leg_name][0][0]**2 + self.changed_pose[leg_name][0][1]**2
-                dist1 = self.changed_pose[leg_name][1][0]**2 + self.changed_pose[leg_name][0][1]**2
+                        if (move_opp_leg):
+                            leg_opp.angle_thigh_lift_target += self.rad_inc * dir
+                            leg_opp.angle_knee_lift_target = pi/2 - leg_opp.angle_thigh_lift_target
+                """
+                if (not updated_dir):
+                    ## Moving this leg does nothing. It's probably in the air or at its limits
+                    self.prev_dir[leg_name] = 0
 
-                inc = 0
-
-                if (dist0 <= dist1 and dist0 < dist_ori):
-                    inc = -self.rad_inc
-                elif (dist0 > dist1 and dist1 < dist_ori):
-                    inc = self.rad_inc
-
-                if inc != 0:
-                    self.legs[leg_name].angle_thigh_lift_target += inc
-                    self.legs[leg_name].angle_knee_lift_target -= inc
-                    print("Changing {} to {}".format(leg_name, degrees(self.legs[leg_name].angle_thigh_lift_target)))
-
-            self.updateAngles()
-
-            print("Hey")
-
-        print(self.changed_pose)
+                    ## Let's lower the leg if its probably in the air
+                    if (leg.angle_thigh_lift_target < radians(70)):
+                        leg.angle_thigh_lift_target += self.rad_inc
+                        leg.angle_knee_lift_target = pi/2 - leg.angle_thigh_lift_target
+                        self.updateAngles()
+                """
+        self.processing_tick = False
 
 
 if __name__ == '__main__':
