@@ -8,7 +8,7 @@ import math
 import threading
 
 from drone_legs_ros.msg import LegJointAngles, JointAngle, LegPressureSensors
-from drone_legs_ros.srv import LegCommand, LegCommandResponse
+from drone_legs_ros.srv import LegCommand, LegCommandResponse, LegVerticalThrust, LegVerticalThrustResponse
 from drone_legs_ros.pressure_sensor_manager import PressureSensorManager
 
 class LegStatePublisher:
@@ -16,6 +16,7 @@ class LegStatePublisher:
         self.pub_sensors = rospy.Publisher("/drone_legs/pressure_sensors", LegPressureSensors, queue_size=10)
         self.pub_joints = rospy.Publisher("/drone_legs/joint_angles", LegJointAngles, queue_size=10)
         self.srv_joints = rospy.Service("/drone_legs/leg_command", LegCommand, self.service_joint_command)
+        self.srv_thrust = rospy.Service("/drone_legs/thrust_command", LegVerticalThrust, self.service_thrust_command)
 
         self.lock = threading.Lock()
 
@@ -109,6 +110,15 @@ class LegStatePublisher:
 
         print("Success")
         
+        resp.success = True
+        resp.status_message = ""
+        return resp
+
+    def service_thrust_command(self, req):
+        print("Ignoring thrust command")
+
+
+        resp = LegVerticalThrustResponse()
         resp.success = True
         resp.status_message = ""
         return resp

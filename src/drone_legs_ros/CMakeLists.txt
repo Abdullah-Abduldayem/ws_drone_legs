@@ -128,22 +128,22 @@ include_directories(
 
 
 # build plugins
-include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
-link_directories(${GAZEBO_LIBRARY_DIRS})
+#include_directories(include ${Boost_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
+#link_directories(${GAZEBO_LIBRARY_DIRS})
 
-add_library(gazebo_drone_legs_control_plugin SHARED src/gazebo_drone_legs_control_plugin.cpp)
-target_link_libraries(gazebo_drone_legs_control_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#add_library(gazebo_drone_legs_control_plugin SHARED src/gazebo_drone_legs_control_plugin.cpp)
+#target_link_libraries(gazebo_drone_legs_control_plugin ${GAZEBO_LIBRARIES} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 
 #############
 ## Install ##
 #############
 
-install(TARGETS
-  gazebo_drone_legs_control_plugin
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-)
+#install(TARGETS
+#  gazebo_drone_legs_control_plugin
+#  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#)
 
 install(DIRECTORY launch
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}

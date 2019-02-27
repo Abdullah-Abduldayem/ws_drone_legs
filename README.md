@@ -40,14 +40,28 @@ cd ~/ws_drone_legs
 wstool update -t src
 ```
 
+### Build Workspace
+```
+cd ~/ws_drone_legs
+catkin build
+```
+
+### Install pyssc32
+```
+cd ~/ws_drone_legs/src/pyssc32
+sudo python setup.py install
+```
+
 ### Instal DynamixelSDK
 ```bash
 cd ~/ws_drone_legs/src/DynamixelSDK/python/
 sudo python setup.py install
 ```
 
-### Build Workspace
+
+## 2. Operation
+
+### Run leg controller (Real-world)
 ```
-cd ~/ws_drone_legs
-catkin build
+rosrun drone_legs_ros leg_state_publisher.py
 ```

@@ -4,7 +4,10 @@ devel
 logs
 
 .catkin_tools/profiles
+.catkin_tools/VERSION
+.idea/
 
+*.pyc
 *.bak
 *.swp
 .directory
