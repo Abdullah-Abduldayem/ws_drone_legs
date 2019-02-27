@@ -15,5 +15,5 @@ logs
 .ycm_extra_conf.py*
 
 src/.settings
-
-rc/pyssc32
+src/pyssc32
+src/DynamixelSDK

@@ -1,6 +1,6 @@
-# ME5524 Bayesian Robotics - Fall 2018
+# Drone Legs
 
-Workspace for the MBZIRC 2020 Challenge 3. The objective of this package is to locate a fire using the Clearpath Jackal UGV and navigate towards it.
+ROS workspace for a quadrupedal drone meant for handling difficult terrain.
 
 ## Table of Contents
 1. [Installation](#1-installation)
@@ -19,7 +19,7 @@ sudo pip install -U catkin_tool
 ### Install this workspace
 ```bash
 cd ~
-git clone https://github.com/Abdullah-Abduldayem/ws_drone_legs.git
+git clone https://github.com/adayem/ws_drone_legs.git
 cd ~/ws_drone_legs
 ```
 
@@ -40,36 +40,14 @@ cd ~/ws_drone_legs
 wstool update -t src
 ```
 
+### Instal DynamixelSDK
+```bash
+cd ~/ws_drone_legs/src/DynamixelSDK/python/
+sudo python setup.py install
+```
+
 ### Build Workspace
 ```
 cd ~/ws_drone_legs
 catkin build
-```
-
-
-## 2. Operation
-
-### Configure ROS MASTER
-The following must be run on each terminal to communicate properly with the jackal. To avoid doing this every time, you can include these in you `~/.bashrc` file.
-```
-export ROS_MASTER_URI=http://cpr-jackal:11311
-export ROS_IP=<your computer's IP address>
-```
-
-### Start the webcam and lidar
-```
-roslaunch mbz_c3_jackal gscam.launch
-rosrun hokuyo_node hokuyo_node
-```
-
-### Run the ball detection
-```
-rosrun mbz_c3_jackal ball_detection.py 
-```
-
-### Getting the Jackal to work with keyboard teleop
-After installing the `teleop_twist_keyboard` package, fire up the node and control Jackal using the keyboard
-
-```
-rosrun teleop_twist_keyboard teleop_twist_keyboard.py
 ```
