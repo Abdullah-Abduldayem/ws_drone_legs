@@ -5,4 +5,4 @@
 - git:
     local-name: DynamixelSDK
     uri: https://github.com/ROBOTIS-GIT/DynamixelSDK.git
-    commit: cb57c705e3f85e42691fe8eee884605e2a2d6ce2
+    version: cb57c705e3f85e42691fe8eee884605e2a2d6ce2
